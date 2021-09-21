@@ -1,0 +1,77 @@
+---
+title: "Answer to Question 1"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+First I load the data into sales variable. I used readr::read_csv as it is usually the faster
+
+```{r}
+sales <- readr::read_csv('2019 winter Data Science Intern Challenge Data Set.csv')
+head(sales)
+```
+### part a
+
+First I can calculate AOV by naive average of order_amount, to get `r mean(sales$order_amount)`, which is extremely high for sneakers.
+
+```{r}
+mean(sales$order_amount)
+```
+
+The problem is, there are outliers. From the summary I can see there are extremely large orders.
+
+```{r}
+summary(sales$order_amount)
+```
+
+Order amount histogram chart shows it clearly.
+```{r}
+hist(sales$order_amount)
+```
+
+The problem is with the large orders from shop 42 and 78.
+```{r}
+sales %>% select(shop_id, user_id, order_amount, total_items) %>% unique() %>% arrange(desc(order_amount)) %>% print(n=30)
+```
+
+From the data, one can observe two outlier patterns
+* there are orders with may items (shop 42, user 607 with 2000 items)
+* highly priced items (shop 78)
+
+### part b
+
+In this case, we'd better use more robust measures such as median as median would not be impacted by the presence of outliers.
+
+I come up with three possible measures.
+
+1. one can report median of order amount
+2. we may take average EXCLUDING shops 42 and 78 as these two shops looks different from the others. Shop 42 (2000 orders from user 607) looks like a reseller or a wholesale selle, and Shop 78 (priced at 30K per an item) sells high-priced luxury sneakers.
+3. we may first take median of each shops, then take median of the shop-medians.
+
+Among the three I think b2 would be the best estimate for 'cheap' sneakers to 'ordinary' buyers.
+
+
+### part c
+
+1. median order value is $284.
+```{r}
+median(sales$order_amount)
+```
+2. mean value except for the two shops $300.16
+```{r}
+mean(sales$order_amount[ sales$shop_id != 42 & sales$shop_id != 78])
+```
+3. first calculate aggregates by shop_id
+```{r}
+sales %>% group_by(shop_id) %>% 
+  summarize(orders = length(order_id), aov = median(order_amount)) -> summary.shop
+```
+
+3. median-of-meidans is $306
+```{r}
+median(summary.shop$aov)
+```
